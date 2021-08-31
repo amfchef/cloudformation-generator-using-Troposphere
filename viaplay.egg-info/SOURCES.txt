@@ -1,0 +1,7 @@
+setup.py
+viaplay/__init__.py
+viaplay.egg-info/PKG-INFO
+viaplay.egg-info/SOURCES.txt
+viaplay.egg-info/dependency_links.txt
+viaplay.egg-info/requires.txt
+viaplay.egg-info/top_level.txt

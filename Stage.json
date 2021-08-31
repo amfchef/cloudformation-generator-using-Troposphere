@@ -1,0 +1,834 @@
+{
+    "Outputs": {
+        "DevPrivateSubnet": {
+            "Description": "Create private subnet for Dev",
+            "Export": {
+                "Name": "private"
+            },
+            "Value": {
+                "Ref": "DevsubnetPrivate"
+            }
+        },
+        "DevProtectedSubnet": {
+            "Description": "Create protected subnet for Dev",
+            "Export": {
+                "Name": "protected"
+            },
+            "Value": {
+                "Ref": "DevsubnetProtected"
+            }
+        },
+        "DevPublicSubnet": {
+            "Description": "Create public subnet for Dev",
+            "Export": {
+                "Name": "public"
+            },
+            "Value": {
+                "Ref": "DevsubnetPublic"
+            }
+        },
+        "DevVPC": {
+            "Description": "Creating VPC for Dev CIDR: 10.0.0.0/24",
+            "Export": {
+                "Name": "VPC"
+            },
+            "Value": {
+                "Ref": "DevVPC"
+            }
+        },
+        "StagePrivateSubnet": {
+            "Description": "Create private subnet for Stage",
+            "Export": {
+                "Name": "private"
+            },
+            "Value": {
+                "Ref": "StagesubnetPrivate"
+            }
+        },
+        "StageProtectedSubnet": {
+            "Description": "Create protected subnet for Stage",
+            "Export": {
+                "Name": "protected"
+            },
+            "Value": {
+                "Ref": "StagesubnetProtected"
+            }
+        },
+        "StagePublicSubnet": {
+            "Description": "Create public subnet for Stage",
+            "Export": {
+                "Name": "public"
+            },
+            "Value": {
+                "Ref": "StagesubnetPublic"
+            }
+        },
+        "StageVPC": {
+            "Description": "Creating VPC for Stage CIDR: 10.1.0.0/18",
+            "Export": {
+                "Name": "VPC"
+            },
+            "Value": {
+                "Ref": "StageVPC"
+            }
+        }
+    },
+    "Resources": {
+        "DevAttachGateway": {
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "DevInternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        },
+        "DevInternetGateway": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "IGW",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "DevNat": {
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "DevNatEip",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::NatGateway"
+        },
+        "DevNatEip": {
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Type": "AWS::EC2::EIP"
+        },
+        "DevNatRoute": {
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "DevNat"
+                },
+                "RouteTableId": {
+                    "Ref": "DevSubnetProtectedRouteAssociation"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "DevNetworkAcl": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "DevNetwork ACL",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::NetworkAcl"
+        },
+        "DevOutBoundHTTPNetworkAclEntryPrivate": {
+            "Properties": {
+                "CidrBlock": "0.0.0.0/0",
+                "Egress": true,
+                "NetworkAclId": {
+                    "Ref": "DevSubnetPublicNetworkAclAssociation"
+                },
+                "PortRange": {
+                    "From": "80",
+                    "To": "80"
+                },
+                "Protocol": "6",
+                "RuleAction": "allow",
+                "RuleNumber": "100"
+            },
+            "Type": "AWS::EC2::NetworkAclEntry"
+        },
+        "DevOutBoundHTTPNetworkAclEntryPublic": {
+            "Properties": {
+                "CidrBlock": "0.0.0.0/0",
+                "Egress": true,
+                "NetworkAclId": {
+                    "Ref": "DevSubnetPrivateNetworkAclAssociation"
+                },
+                "PortRange": {
+                    "From": "80",
+                    "To": "80"
+                },
+                "Protocol": "6",
+                "RuleAction": "deny",
+                "RuleNumber": "100"
+            },
+            "Type": "AWS::EC2::NetworkAclEntry"
+        },
+        "DevRoute": {
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "DevRouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "DevRouteTable": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "DevRoute Table",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "DevSubnetPrivateNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "DevNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetPrivate"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "DevSubnetPrivateRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "DevRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetPrivate"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "DevSubnetProtectedNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "DevNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "DevSubnetProtectedRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "DevRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "DevSubnetPublicNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "DevNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetPublic"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "DevSubnetPublicRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "DevRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "DevsubnetPublic"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "DevVPC": {
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Dev",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::VPC"
+        },
+        "DevsubnetPrivate": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.1/24",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.0.0.1",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "DevsubnetProtected": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.3/24",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.0.0.3",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "DevsubnetPublic": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.0.0.2/24",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.0.0.2",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "DevVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "StageAttachGateway": {
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "StageInternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        },
+        "StageInternetGateway": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "IGW",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "StageNat": {
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "StageNatEip",
+                        "AllocationId"
+                    ]
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::NatGateway"
+        },
+        "StageNatEip": {
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Type": "AWS::EC2::EIP"
+        },
+        "StageNatRoute": {
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "StageNat"
+                },
+                "RouteTableId": {
+                    "Ref": "StageSubnetProtectedRouteAssociation"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "StageNetworkAcl": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "StageNetwork ACL",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::NetworkAcl"
+        },
+        "StageOutBoundHTTPNetworkAclEntryPrivate": {
+            "Properties": {
+                "CidrBlock": "0.0.0.0/0",
+                "Egress": true,
+                "NetworkAclId": {
+                    "Ref": "StageSubnetPublicNetworkAclAssociation"
+                },
+                "PortRange": {
+                    "From": "80",
+                    "To": "80"
+                },
+                "Protocol": "6",
+                "RuleAction": "allow",
+                "RuleNumber": "100"
+            },
+            "Type": "AWS::EC2::NetworkAclEntry"
+        },
+        "StageOutBoundHTTPNetworkAclEntryPublic": {
+            "Properties": {
+                "CidrBlock": "0.0.0.0/0",
+                "Egress": true,
+                "NetworkAclId": {
+                    "Ref": "StageSubnetPrivateNetworkAclAssociation"
+                },
+                "PortRange": {
+                    "From": "80",
+                    "To": "80"
+                },
+                "Protocol": "6",
+                "RuleAction": "deny",
+                "RuleNumber": "100"
+            },
+            "Type": "AWS::EC2::NetworkAclEntry"
+        },
+        "StageRoute": {
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "StageRouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "StageRouteTable": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "StageRoute Table",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "StageSubnetPrivateNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "StageNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetPrivate"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "StageSubnetPrivateRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "StageRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetPrivate"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "StageSubnetProtectedNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "StageNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "StageSubnetProtectedRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "StageRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetProtected"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "StageSubnetPublicNetworkAclAssociation": {
+            "Properties": {
+                "NetworkAclId": {
+                    "Ref": "StageNetworkAcl"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetPublic"
+                }
+            },
+            "Type": "AWS::EC2::SubnetNetworkAclAssociation"
+        },
+        "StageSubnetPublicRouteAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "StageRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "StagesubnetPublic"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "StageVPC": {
+            "Properties": {
+                "CidrBlock": "10.1.0.0/18",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "Stage",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::VPC"
+        },
+        "StagesubnetPrivate": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.1.0.1/18",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.1.0.1",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "StagesubnetProtected": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        3,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.1.0.3/18",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.1.0.3",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "StagesubnetPublic": {
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        2,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": "10.1.0.2/18",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "10.1.0.2",
+                                    " - ",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    }
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "Key": "Network",
+                        "Value": "public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "StageVPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        }
+    }
+}
