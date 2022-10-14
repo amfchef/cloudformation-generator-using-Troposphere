@@ -22,19 +22,19 @@ They have requested that the tool initially creates templates for the accounts a
 Each account should have a VPC with 
 
 Dev:
-* VPC IP: 10.0.0.0/
+* VPC IP: 10.0.0.0
 * Netmask: 255.255.255.0	
 * DNS Support enabled
 * Default instance tenancy
 
 Stage:
-* VPC IP: 10.1.0.0/18 HostMin:   10.1.0.1    -  10.1.63.254  
+* VPC IP: 10.1.0.0
 * Netmask: 255.255.192.0
 * DNS Support and DNS Hostnames enabled
 * Default instance tenancy
 
 Prod:
-* VPC IP: 10.2.0.0/18	HostMin:   10.2.0.1  -  10.2.63.254  
+* VPC IP: 10.2.0.0/
 * Netmask: 255.255.192.0
 * DNS Support and DNS Hostnames enabled
 * Default instance tenancy
